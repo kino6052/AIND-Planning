@@ -10,6 +10,24 @@ from lp_utils import (
 from my_planning_graph import PlanningGraph
 
 
+# Util Functions
+def create_combinations(lists):
+    results = []
+    recursive_combination("", [], lists, results)
+    return results
+
+
+def recursive_combination(obj, state, lists, results):
+    if len(lists) is 0:
+        return state
+    for next_obj in lists[0]:
+        if obj != next_obj:
+            new_state = state[:]
+            new_state.append(next_obj)
+            r = recursive_combination(next_obj, new_state, lists[1:], results)
+            if r is not None:
+                results.append(r)
+
 class AirCargoProblem(Problem):
     def __init__(self, cargos, planes, airports, initial: FluentState, goal: list):
         """
@@ -33,6 +51,7 @@ class AirCargoProblem(Problem):
         self.airports = airports
         self.actions_list = self.get_actions()
 
+
     def get_actions(self):
         '''
         This method creates concrete actions (no variables) for all actions in the problem
@@ -45,12 +64,14 @@ class AirCargoProblem(Problem):
         list<Action>
             list of Action objects
         '''
-
+        fly_action_literal_combinations = create_combinations([self.planes, self.airports, self.airports])
+        load_action_literal_combinations = create_combinations([self.cargos, self.planes, self.airports])
         # TODO create concrete Action objects based on the domain action schema for: Load, Unload, and Fly
         # concrete actions definition: specific literal action that does not include variables as with the schema
         # for example, the action schema 'Load(c, p, a)' can represent the concrete actions 'Load(C1, P1, SFO)'
         # or 'Load(C2, P2, JFK)'.  The actions for the planning problem must be concrete because the problems in
         # forward search and Planning Graphs must use Propositional Logic
+        ##############################
 
         def load_actions():
             '''Create all concrete Load actions and return a list
@@ -58,6 +79,19 @@ class AirCargoProblem(Problem):
             :return: list of Action objects
             '''
             loads = []
+            for combination in load_action_literal_combinations:
+                precond_pos = [expr("At({0},{2})".format(*combination)),
+                               expr("At({1},{2})".format(*combination)),
+                               expr("Cargo({0})".format(*combination)),
+                               expr("Plane({1})".format(*combination)),
+                               expr("Airport({2})".format(*combination))]
+                precond_neg = []
+                effect_pos = [expr("In({0},{1})".format(*combination))]
+                effect_neg = [expr("At({0},{2})".format(*combination))]
+                load_action = Action(expr("Load({0},{1},{2})".format(*combination)),
+                                     [precond_pos, precond_neg],
+                                     [effect_pos, effect_neg])
+                loads.append(load_action)
             # TODO create all load ground actions from the domain Load action
             return loads
 
@@ -67,6 +101,19 @@ class AirCargoProblem(Problem):
             :return: list of Action objects
             '''
             unloads = []
+            for combination in load_action_literal_combinations:
+                precond_pos = [expr("In({0},{1})".format(*combination)),
+                               expr("At({1},{2})".format(*combination)),
+                               expr("Cargo({0})".format(*combination)),
+                               expr("Plane({1})".format(*combination)),
+                               expr("Airport({2})".format(*combination))]
+                precond_neg = []
+                effect_pos = [expr("At({0},{2})".format(*combination))]
+                effect_neg = [expr("In({0},{1})".format(*combination))]
+                unload_action = Action(expr("Unload({0},{1},{2})".format(*combination)),
+                                       [precond_pos, precond_neg],
+                                       [effect_pos, effect_neg])
+                unloads.append(unload_action)
             # TODO create all Unload ground actions from the domain Unload action
             return unloads
 
