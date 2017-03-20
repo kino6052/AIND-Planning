@@ -222,19 +222,16 @@ class AirCargoProblem(Problem):
         executed.
         '''
         # TODO implement (see Russell-Norvig Ed-3 10.2.3  or Russell-Norvig Ed-2 11.2)
-
+        actions_list = self.actions_list.copy()
         def remove_precond():
-            for action in self.actions_list:
+            for action in actions_list:
                 for effect in action.effect_add:
                     if effect not in self.goal:
                         action.effect_add.remove(effect)
-                # for effect in action.precond_neg:
-                #     if effect not in self.goal:
-                #         action.precond_neg.remove(effect)
 
         def find_combination(max_depth):
             MAX_DEPTH = max_depth
-            actions = [self.actions_list]
+            actions = [actions_list]
             for i in range(1, MAX_DEPTH):
                 combinations = create_combinations(actions)
                 for combination in combinations:
@@ -246,7 +243,7 @@ class AirCargoProblem(Problem):
                 actions.append(self.actions_list)
             return 0
         remove_precond()
-        count = find_combination(5)
+        count = find_combination(len(self.actions_list))
         return count
 
 
