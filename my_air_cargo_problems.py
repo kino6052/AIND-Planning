@@ -50,7 +50,7 @@ class AirCargoProblem(Problem):
         self.planes = planes
         self.airports = airports
         self.actions_list = self.get_actions()
-
+        self.goal_dict = {}
 
     def get_actions(self):
         '''
@@ -222,14 +222,23 @@ class AirCargoProblem(Problem):
         executed.
         '''
         # TODO implement (see Russell-Norvig Ed-3 10.2.3  or Russell-Norvig Ed-2 11.2)
-        actions_list = self.actions_list.copy()
-        def remove_precond():
-            for action in actions_list:
-                for effect in action.effect_add:
-                    if effect not in self.goal:
-                        action.effect_add.remove(effect)
+        actions_list = self.actions_list
+        max_depth = len(actions_list)
 
-        def find_combination(max_depth):
+        def action_effect_union_to_reach_the_goal():
+            goal = self.goal.copy()
+            # Goal Satisfaction
+            if node.action is not None:
+                for eff in node.action.effect_add:
+                    if eff in goal:
+                        goal.remove(eff)
+            if str(goal) in self.goal_dict:
+                return self.goal_dict[str(goal)]*node.depth
+            count = find_combination(max_depth, goal)
+            self.goal_dict[str(goal)] = count  # Keep the Minimum Actions to Prevent Runing Find_Combination Too Many Times
+            return count + node.depth
+
+        def find_combination(max_depth, goal):
             MAX_DEPTH = max_depth
             actions = [actions_list]
             for i in range(1, MAX_DEPTH):
@@ -238,13 +247,12 @@ class AirCargoProblem(Problem):
                     effects = []
                     for action in combination:
                         effects.extend(action.effect_add)
-                    if set(effects) == set(self.goal):
+                    if set(effects).issuperset(set(goal)): # goal has been achieved
                         return i
                 actions.append(self.actions_list)
-            return 0
-        remove_precond()
-        count = find_combination(len(self.actions_list))
-        return count
+            return float("inf")
+
+        return action_effect_union_to_reach_the_goal()
 
 
 def air_cargo_p1() -> AirCargoProblem:

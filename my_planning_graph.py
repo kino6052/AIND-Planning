@@ -222,6 +222,7 @@ class PlanningGraph():
         self.all_actions = self.problem.actions_list + self.noop_actions(self.problem.state_map)
         self.s_levels = []
         self.a_levels = []
+        self.dict = dict()
         self.create_graph()
 
     def noop_actions(self, literal_list):
@@ -253,6 +254,11 @@ class PlanningGraph():
             action_list.append(act2)
         return action_list
 
+    def memoize(self, s_set: set, level: int):
+        for s_node in s_set:
+            if s_node.symbol not in self.dict and s_node.is_pos:
+                self.dict[s_node.symbol] = level
+
     def create_graph(self):
         ''' build a Planning Graph as described in Russell-Norvig 3rd Ed 10.3 or 2nd Ed 11.4
 
@@ -280,6 +286,7 @@ class PlanningGraph():
             self.s_levels[level].add(PgNode_s(literal, True))
         for literal in self.fs.neg:
             self.s_levels[level].add(PgNode_s(literal, False))
+        self.memoize(self.s_levels[level], level)  # Memoize the S0 for Faster Lookup
         # no mutexes at the first level
 
         # continue to build the graph alternating A, S levels until last two S levels contain the same literals,
@@ -306,6 +313,7 @@ class PlanningGraph():
         '''
         def populate_level():
             # TODO add action A level to the planning graph as described in the Russell-Norvig text
+            print("a")
             self.a_levels.append(set())
             s_set = self.s_levels[level]
             for action in self.all_actions:
@@ -319,6 +327,7 @@ class PlanningGraph():
                                     s.children.add(a_node)
                             self.a_levels[level].add(a_node)
             return 0
+            print("b")
         # 1. determine what actions to add and create those PgNode_a objects
         # 2. connect the nodes to the previous S literal level
         # for example, the A0 level will iterate through all possible actions for the problem and add a PgNode_a to a_levels[0]
@@ -337,6 +346,8 @@ class PlanningGraph():
             adds S nodes to the current level in self.s_levels[level]
         '''
         # TODO add literal S level to the planning graph as described in the Russell-Norvig text
+
+
         def populate_level():
             # TODO add action A level to the planning graph as described in the Russell-Norvig text
             self.s_levels.append(set())
@@ -346,6 +357,7 @@ class PlanningGraph():
                 for s_node in a_node.effnodes:
                     a_node.children.add(s_node)
                     s_set.add(s_node)
+            self.memoize(s_set, level)
             return 0
         # 1. determine what literals to add
         # 2. connect the nodes
@@ -530,22 +542,18 @@ class PlanningGraph():
         # TODO test for Inconsistent Support between nodes
         for s1_parent in s1_parents:
             for s2_parent in s2_parents:
-                if s2_parent not in s1_parent.mutex and s1_parent not in s2_parent.mutex:
+                if not s2_parent.is_mutex(s1_parent):
                     return False
         return True
 
     def h_levelsum(self) -> int:
         '''The sum of the level costs of the individual goals (admissible if goals independent)
-
         :return: int
         '''
         level_sum = 0
-        goal_set = set(self.problem.goal)
-        for level in range(len(self.s_levels)):
-            for s_node in self.s_levels[level]:
-                if s_node.symbol in goal_set and s_node.is_pos:
-                    goal_set.remove(s_node.symbol)
-                    level_sum += level
-        # TODO implement
-        # for each goal in the problem, determine the level cost, then add them together
+        for goal in self.problem.goal:
+            if goal in self.dict:
+                level_sum += self.dict[goal]
+            else:
+                return float("inf")
         return level_sum
