@@ -3,6 +3,8 @@ from aimacode.search import Problem
 from aimacode.utils import expr
 from lp_utils import decode_state
 
+current_level = 2
+
 
 class PgNode():
     ''' Base class for planning graph nodes.
@@ -201,7 +203,7 @@ def mutexify(node1: PgNode, node2: PgNode):
 class PlanningGraph():
     '''
     A planning graph as described in chapter 10 of the AIMA text. The planning
-    graph can be used to reason about 
+    graph can be used to reason about
     '''
 
     def __init__(self, problem: Problem, state: str, serial_planning=True):
@@ -260,6 +262,7 @@ class PlanningGraph():
                 self.dict[s_node.symbol] = level
 
     def create_graph(self):
+        global current_level
         ''' build a Planning Graph as described in Russell-Norvig 3rd Ed 10.3 or 2nd Ed 11.4
 
         The S0 initial level has been implemented for you.  It has no parents and includes all of
@@ -291,7 +294,16 @@ class PlanningGraph():
 
         # continue to build the graph alternating A, S levels until last two S levels contain the same literals,
         # i.e. until it is "leveled"
+        goals_remaining = self.problem.goal.copy()
         while not leveled:
+            if level >= current_level:
+                print("break", level)
+                break
+            for goal in self.problem.goal:  # Stop Constructing Graph if Everything is Determined for the Heuristics
+                if goal in self.dict and goal in goals_remaining:
+                    goals_remaining.remove(goal)
+            if len(goals_remaining) == 0:
+                break
             self.add_action_level(level)
             self.update_a_mutex(self.a_levels[level])
 
@@ -311,9 +323,9 @@ class PlanningGraph():
         :return:
             adds A nodes to the current level in self.a_levels[level]
         '''
+
         def populate_level():
             # TODO add action A level to the planning graph as described in the Russell-Norvig text
-            print("a")
             self.a_levels.append(set())
             s_set = self.s_levels[level]
             for action in self.all_actions:
@@ -327,7 +339,7 @@ class PlanningGraph():
                                     s.children.add(a_node)
                             self.a_levels[level].add(a_node)
             return 0
-            print("b")
+
         # 1. determine what actions to add and create those PgNode_a objects
         # 2. connect the nodes to the previous S literal level
         # for example, the A0 level will iterate through all possible actions for the problem and add a PgNode_a to a_levels[0]
@@ -345,6 +357,7 @@ class PlanningGraph():
         :return:
             adds S nodes to the current level in self.s_levels[level]
         '''
+
         # TODO add literal S level to the planning graph as described in the Russell-Norvig text
 
 
@@ -352,13 +365,14 @@ class PlanningGraph():
             # TODO add action A level to the planning graph as described in the Russell-Norvig text
             self.s_levels.append(set())
             s_set = self.s_levels[level]
-            a_set = self.a_levels[level-1]
+            a_set = self.a_levels[level - 1]
             for a_node in a_set:
                 for s_node in a_node.effnodes:
                     a_node.children.add(s_node)
                     s_set.add(s_node)
             self.memoize(s_set, level)
             return 0
+
         # 1. determine what literals to add
         # 2. connect the nodes
         # for example, every A node in the previous level has a list of S nodes in effnodes that represent the effect
@@ -435,7 +449,7 @@ class PlanningGraph():
 
     def interference_mutex(self, node_a1: PgNode_a, node_a2: PgNode_a) -> bool:
         '''
-        Test a pair of actions for mutual exclusion, returning True if the 
+        Test a pair of actions for mutual exclusion, returning True if the
         effect of one action is the negation of a precondition of the other.
 
         HINT: The Action instance associated with an action node is accessible
@@ -457,9 +471,9 @@ class PlanningGraph():
         a2_precond_pos = set(node_a2.action.precond_pos)
         a2_precond_neg = set(node_a2.action.precond_neg)
         if len(a1_eff_add.intersection(a2_precond_neg)) > 0 or \
-                len(a1_eff_rem.intersection(a2_precond_pos)) > 0 or \
-                len(a2_eff_add.intersection(a1_precond_neg)) > 0 or \
-                len(a2_eff_rem.intersection(a1_precond_pos)) > 0:
+                        len(a1_eff_rem.intersection(a2_precond_pos)) > 0 or \
+                        len(a2_eff_add.intersection(a1_precond_neg)) > 0 or \
+                        len(a2_eff_rem.intersection(a1_precond_pos)) > 0:
             return True
         return False
 
@@ -480,7 +494,7 @@ class PlanningGraph():
         a2_parents = node_a2.parents
         a2_parents_mutex = set([m for p in a2_parents for m in p.mutex])
         if len(a1_parents.intersection(a2_parents_mutex)) > 0 or \
-                len(a2_parents.intersection(a1_parents_mutex)) > 0:
+                        len(a2_parents.intersection(a1_parents_mutex)) > 0:
             return True
         return False
 
@@ -550,10 +564,14 @@ class PlanningGraph():
         '''The sum of the level costs of the individual goals (admissible if goals independent)
         :return: int
         '''
+
+        global current_level
         level_sum = 0
         for goal in self.problem.goal:
             if goal in self.dict:
-                level_sum += self.dict[goal]
+                lvl = self.dict[goal]
+                level_sum += lvl
             else:
                 return float("inf")
+        print(level_sum, current_level)
         return level_sum

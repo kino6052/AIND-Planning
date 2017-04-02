@@ -223,9 +223,10 @@ class AirCargoProblem(Problem):
         '''
         # TODO implement (see Russell-Norvig Ed-3 10.2.3  or Russell-Norvig Ed-2 11.2)
         actions_list = self.actions_list
-        max_depth = len(actions_list)
+        max_depth = 10
 
         def action_effect_union_to_reach_the_goal():
+            print("here")
             goal = self.goal.copy()
             # Goal Satisfaction
             if node.action is not None:
@@ -233,10 +234,12 @@ class AirCargoProblem(Problem):
                     if eff in goal:
                         goal.remove(eff)
             if str(goal) in self.goal_dict:
+                print(node.depth)
                 return self.goal_dict[str(goal)]*node.depth
             count = find_combination(max_depth, goal)
             self.goal_dict[str(goal)] = count  # Keep the Minimum Actions to Prevent Runing Find_Combination Too Many Times
-            return count + node.depth
+            print(count)
+            return count*node.depth
 
         def find_combination(max_depth, goal):
             MAX_DEPTH = max_depth
